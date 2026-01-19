@@ -280,6 +280,45 @@
             document.addEventListener('htmx:afterRequest', function() {
                 closeMobileMenu();
             });
+
+            // Cart functionality
+            const desktopCart = document.getElementById('desktopCart');
+            const mobileCart = document.getElementById('mobileCart');
+            const mobileCartHeader = document.getElementById('mobileCartHeader');
+            
+            // Get initial cart count
+            updateCartCount();
+            
+            function updateHeaderCartCount(count) {
+                const cartText = `CART (${count})`;
+                if (desktopCart) desktopCart.textContent = cartText;
+                if (mobileCart) mobileCart.textContent = cartText;
+                if (mobileCartHeader) mobileCartHeader.textContent = cartText;
+            }
+            
+            function updateCartCount() {
+                fetch('{% url "cart:cart_count" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        updateHeaderCartCount(data.total_items);
+                    });
+            }
+    
+            function openCart() {
+                htmx.ajax('GET', '{% url "cart:cart_modal" %}', {
+                    target: '#cart-container',
+                    swap: 'innerHTML'
+                });
+            }
+    
+            [desktopCart, mobileCart, mobileCartHeader].forEach(cartLink => {
+                if (cartLink) {
+                    cartLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        openCart();
+                    });
+                }
+            });
     
             // Close mobile menu on window resize
             window.addEventListener('resize', function() {
