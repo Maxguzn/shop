@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
@@ -93,4 +93,4 @@ def logout_view(request):
     logout(request)
     if request.headers.get('HX-Request'):
         return HttpResponse(headers={'HX-Redirect': reverse('main:index')})
-    return redirect('main:index') 
+    return redirect('main:index')
