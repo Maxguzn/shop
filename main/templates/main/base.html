@@ -1,10 +1,11 @@
 {% load static %}
+{% load comparison_tags %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ENFANTS RICHES DÉPRIMÉS{% endblock %}</title>
+    <title>{% block title %}Sundry Store{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -117,8 +118,7 @@
         <div class="p-6">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-lg font-bold tracking-tight text-left">
-                    ENFANTS RICHES <br>
-                    DÉPRIMÉS
+                    SUNDRY STORE <br>
                 </h2>
                 <button id="closeMenu" class="hamburger active">
                     <span></span>
@@ -148,18 +148,30 @@
             
             <div class="mt-8 space-y-4">
                 <a href="#" class="block text-sm font-medium text-gray-900 hover:text-gray-700 py-2">SEARCH</a>
+                
+                <!-- Ссылка на сравнение в мобильном меню -->
+                <a href="{% url 'comparison:comparison_page' %}" 
+                   class="block text-sm font-medium text-gray-900 hover:text-gray-700 py-2 flex items-center">
+                    COMPARE
+                    {% if comparison_count > 0 %}
+                    <span class="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {{ comparison_count }}
+                    </span>
+                    {% endif %}
+                </a>
+                
                 <a href="{% url 'users:profile' %}" 
-                hx-get="{% url 'users:profile' %}" 
-                hx-target="#main-content" 
-                hx-push-url="true"
-                class="text-sm font-medium text-gray-900 uppercase hover:text-gray-600">
+                   hx-get="{% url 'users:profile' %}" 
+                   hx-target="#main-content" 
+                   hx-push-url="true"
+                   class="text-sm font-medium text-gray-900 uppercase hover:text-gray-600">
                     ACCOUNT
                 </a>
                 <a href="#" id="mobileCart" class="block text-sm font-medium text-gray-900 hover:text-gray-700 py-2">CART (0)</a>
             </div>
         </div>
     </div>
-
+    
     <!-- Header -->
     <header class="sticky top-0">
         <div class="mx-auto px-4 sm:px-6 lg:px-8">
@@ -170,7 +182,7 @@
                     <span></span>
                     <span></span>
                 </button>
-                
+
                 <!-- Logo -->
                 <div class="flex-shrink-0">
                     <a href="{% url 'main:index' %}" 
@@ -178,8 +190,7 @@
                        hx-target="#main-content" 
                        hx-push-url="true">
                         <h1 class="text-sm sm:text-lg font-bold tracking-tight text-left">
-                            ENFANTS RICHES <br>
-                            DÉPRIMÉS
+                            SUNDRY STORE <br>
                         </h1>
                     </a>
                 </div>
@@ -208,11 +219,25 @@
                             SEARCH
                         </button>
                     </div>
+                    
+                    <!-- Ссылка на сравнение в десктопной навигации -->
+                    <div class="relative">
+                        <a href="{% url 'comparison:comparison_page' %}" 
+                           class="text-sm font-medium uppercase hover:text-gray-600 flex items-center">
+                            COMPARE
+                            {% if comparison_count > 0 %}
+                            <span class="ml-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                {{ comparison_count }}
+                            </span>
+                            {% endif %}
+                        </a>
+                    </div>
+                    
                     <a href="{% url 'users:profile' %}" 
-                    hx-get="{% url 'users:profile' %}" 
-                    hx-target="#main-content" 
-                    hx-push-url="true"
-                    class="text-sm font-medium text-gray-900 uppercase hover:text-gray-600">
+                       hx-get="{% url 'users:profile' %}" 
+                       hx-target="#main-content" 
+                       hx-push-url="true"
+                       class="text-sm font-medium text-gray-900 uppercase hover:text-gray-600">
                         ACCOUNT
                     </a>
                     <a href="#" id="desktopCart" class="text-sm font-medium text-gray-900 hover:text-gray-700">CART (0)</a>
@@ -237,7 +262,7 @@
         <main class="mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="text-center py-20">
                 <h2 class="text-4xl font-bold tracking-tight text-gray-900 mb-4">
-                    ENFANTS RICHES DÉPRIMÉS
+                    Sundry Store
                 </h2>
                 <p class="text-lg text-gray-600 mb-8">
                     Select a category to browse our collection
