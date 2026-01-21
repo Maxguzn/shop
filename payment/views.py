@@ -14,25 +14,22 @@ import json
 import hashlib
 import base64
 
-# stripe login
-# stripe listen --forward-to localhost:8000/payment/stripe/webhook/
-
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe_endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
 
 def create_stripe_checkout_session(order, request):
-    cart = CartMixin.get_cart(request)
+    cart = CartMixin().get_cart(request)
     line_items = []
     for item in cart.items.select_related('product', 'product_size'):
         line_items.append({
             'price_data': {
-                'currency': 'eur',
+                'currency': 'usd',
                 'product_data': {
                     'name': f'{item.product.name} - {item.product_size.size.name}',
                 },
-                'unit_amount': int(item.product.size * 100),
+                'unit_amount': int(item.product.price * 100),
             },
             'quantity': item.quantity,
         })
