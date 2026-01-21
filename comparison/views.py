@@ -1,17 +1,23 @@
-# shop/views.py или main/views.py
+# comparison/views.py
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from .models import Device, Comparison, Category
-import json
+from main.models import Product
+from .models import Comparison
+from main.models import Category
 
-def comparison_page(request):
-    """Главная страница сравнения"""
-    # Получаем сравнение для текущего пользователя/сессии
+
+@require_POST
+def add_to_comparison(request, product_id):
+    """Добавление товара в сравнение (AJAX)"""
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Получаем или создаем объект сравнения
     if request.user.is_authenticated:
         comparison, created = Comparison.objects.get_or_create(user=request.user)
     else:
-        # Для анонимных пользователей используем сессию
         session_key = request.session.session_key
         if not session_key:
             request.session.create()
@@ -19,158 +25,119 @@ def comparison_page(request):
         
         comparison, created = Comparison.objects.get_or_create(
             session_key=session_key,
-            user__isnull=True
+            user__isnull=True,
+            defaults={'session_key': session_key}
         )
     
-    # Получаем данные для таблицы
-    table_data = comparison.get_comparison_table()
+    # Проверяем, не добавлен ли уже товар
+    if comparison.products.filter(id=product.id).exists():
+        return JsonResponse({
+            'status': 'error',
+            'message': f'"{product.name}" уже в сравнении',
+            'count': comparison.products.count()
+        })
     
-    # Получаем все категории для меню
+    # Проверяем лимит
+    if comparison.products.count() >= Comparison.MAX_ITEMS:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Максимум {Comparison.MAX_ITEMS} товаров в сравнении',
+            'count': comparison.products.count()
+        })
+    
+    # Добавляем товар
+    comparison.products.add(product)
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': f'"{product.name}" добавлен в сравнение',
+        'count': comparison.products.count()
+    })
+
+def clear_comparison(request):
+    """Очистка всего сравнения"""
+    if request.user.is_authenticated:
+        comparison = Comparison.objects.filter(user=request.user).first()
+    else:
+        session_key = request.session.session_key
+        comparison = Comparison.objects.filter(
+            session_key=session_key,
+            user__isnull=True
+        ).first()
+    
+    if comparison:
+        comparison.delete()
+        messages.success(request, "Сравнение очищено")
+    
+    return redirect('comparison:comparison_page')
+
+@require_POST
+def remove_from_comparison(request, product_id):
+    """Удаление товара из сравнения (AJAX)"""
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Находим объект сравнения
+    if request.user.is_authenticated:
+        comparison = Comparison.objects.filter(user=request.user).first()
+    else:
+        session_key = request.session.session_key
+        comparison = Comparison.objects.filter(
+            session_key=session_key,
+            user__isnull=True
+        ).first()
+    
+    if comparison:
+        comparison.products.remove(product)
+        # Если товаров не осталось, можно удалить объект сравнения
+        if comparison.products.count() == 0:
+            comparison.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'"{product.name}" удален из сравнения',
+            'count': comparison.products.count() if hasattr(comparison, 'products') else 0
+        })
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Товар не найден в сравнении'
+    })
+
+
+def comparison_page(request):
+    """Страница сравнения товаров"""
+    # Получаем объект сравнения
+    if request.user.is_authenticated:
+        comparison = Comparison.objects.filter(user=request.user).first()
+    else:
+        session_key = request.session.session_key
+        comparison = Comparison.objects.filter(
+            session_key=session_key,
+            user__isnull=True
+        ).first()
+    
+    table_data = {
+        'products': [],
+        'characteristics': [],
+        'all_specs': [],
+        'count': 0,
+        'max_items': Comparison.MAX_ITEMS,
+    }
+    
+    if comparison:
+        table_data = comparison.get_comparison_table()
+    
     categories = Category.objects.all()
     
     context = {
-        'title': 'Product Comparison',
-        'devices': table_data['devices'],
+        'title': 'Сравнение товаров',
+        'products': table_data['products'],
         'characteristics': table_data['characteristics'],
+        'all_specs': table_data['all_specs'],
         'count': table_data['count'],
-        'max_items': Comparison.MAX_ITEMS,
+        'max_items': table_data['max_items'],
         'categories': categories,
-        'comparison_count': comparison.devices.count(),
+        'comparison_count': table_data['count'],
     }
     
     return render(request, 'comparison/comparison_page.html', context)
-
-
-def add_to_comparison(request, device_id):
-    """Добавить товар в сравнение (через GET запрос)"""
-    device = get_object_or_404(Device, id=device_id)
-    
-    # Получаем или создаем сравнение
-    if request.user.is_authenticated:
-        comparison, created = Comparison.objects.get_or_create(user=request.user)
-    else:
-        session_key = request.session.session_key
-        if not session_key:
-            request.session.create()
-            session_key = request.session.session_key
-        
-        comparison, created = Comparison.objects.get_or_create(
-            session_key=session_key,
-            user__isnull=True
-        )
-    
-    # Проверяем лимит
-    if comparison.devices.count() >= Comparison.MAX_ITEMS:
-        messages.error(request, f'You can compare only {Comparison.MAX_ITEMS} products')
-    elif comparison.devices.filter(id=device_id).exists():
-        messages.info(request, 'Product already in comparison')
-    else:
-        comparison.devices.add(device)
-        messages.success(request, f'"{device.name}" added to comparison')
-    
-    # Возвращаем на предыдущую страницу
-    referer = request.META.get('HTTP_REFERER', '/')
-    return redirect(referer)
-
-def remove_from_comparison(request, device_id):
-    """Удалить товар из сравнения"""
-    device = get_object_or_404(Device, id=device_id)
-    
-    if request.user.is_authenticated:
-        comparison = get_object_or_404(Comparison, user=request.user)
-    else:
-        session_key = request.session.session_key
-        if not session_key:
-            return redirect('comparison_page')
-        comparison = get_object_or_404(Comparison, session_key=session_key, user__isnull=True)
-    
-    if comparison.devices.filter(id=device_id).exists():
-        comparison.devices.remove(device)
-        messages.success(request, f'"{device.name}" removed from comparison')
-    
-    return redirect('comparison_page')
-
-def clear_comparison(request):
-    """Очистить все сравнение"""
-    if request.user.is_authenticated:
-        comparison = get_object_or_404(Comparison, user=request.user)
-    else:
-        session_key = request.session.session_key
-        if not session_key:
-            return redirect('comparison_page')
-        comparison = get_object_or_404(Comparison, session_key=session_key, user__isnull=True)
-    
-    comparison.devices.clear()
-    messages.success(request, 'Comparison cleared')
-    
-    return redirect('comparison_page')
-
-def toggle_comparison(request, device_id):
-    """Добавить/удалить товар одной кнопкой"""
-    device = get_object_or_404(Device, id=device_id)
-    
-    # Получаем сравнение
-    if request.user.is_authenticated:
-        comparison, created = Comparison.objects.get_or_create(user=request.user)
-    else:
-        session_key = request.session.session_key
-        if not session_key:
-            request.session.create()
-            session_key = request.session.session_key
-        
-        comparison, created = Comparison.objects.get_or_create(
-            session_key=session_key,
-            user__isnull=True
-        )
-    
-    # Проверяем, есть ли уже товар
-    if comparison.devices.filter(id=device_id).exists():
-        # Удаляем
-        comparison.devices.remove(device)
-        messages.info(request, f'"{device.name}" removed from comparison')
-        action = 'removed'
-    else:
-        # Добавляем
-        if comparison.devices.count() >= Comparison.MAX_ITEMS:
-            messages.error(request, f'You can compare only {Comparison.MAX_ITEMS} products')
-            referer = request.META.get('HTTP_REFERER', '/')
-            return redirect(referer)
-        
-        comparison.devices.add(device)
-        messages.success(request, f'"{device.name}" added to comparison')
-        action = 'added'
-    
-    # Возвращаем на предыдущую страницу
-    referer = request.META.get('HTTP_REFERER', '/')
-    return redirect(referer)
-
-# Вьюшка для получения количества товаров в сравнении (для шапки)
-def get_comparison_count(request):
-    """Получить количество товаров в сравнении (для шапки)"""
-    if request.user.is_authenticated:
-        try:
-            comparison = Comparison.objects.get(user=request.user)
-            count = comparison.devices.count()
-        except Comparison.DoesNotExist:
-            count = 0
-    else:
-        session_key = request.session.session_key
-        if session_key:
-            try:
-                comparison = Comparison.objects.get(session_key=session_key, user__isnull=True)
-                count = comparison.devices.count()
-            except Comparison.DoesNotExist:
-                count = 0
-        else:
-            count = 0
-    
-    return count
-
-# Контекстный процессор для добавления сравнения во все шаблоны
-def comparison_context(request):
-    """Добавляет счетчик сравнения в контекст всех шаблонов"""
-    count = get_comparison_count(request)
-    return {
-        'comparison_count': count,
-        'comparison_max_items': Comparison.MAX_ITEMS,
-    }

@@ -1,13 +1,13 @@
 from django.core.serializers import serializers
-from ..main.models import Device, Comparison
+from ..main.models import Product, Comparison
 from django.contrib.auth.models import User
 
-class DeviceSerializer(serializers.ModelSerializer):
+class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='category.name', read_only=True)
     
     class Meta:
-        model = Device
+        model = Product
         fields = [
             'id', 'name', 'price', 'description', 
             'brand', 'category', 'category_name',
@@ -23,21 +23,21 @@ class DeviceSerializer(serializers.ModelSerializer):
         return None
 
 class ComparisonSerializer(serializers.ModelSerializer):
-    devices = DeviceSerializer(many=True, read_only=True)
-    devices_count = serializers.SerializerMethodField()
+    products = ProductSerializer(many=True, read_only=True)
+    products_count = serializers.SerializerMethodField()
     max_items = serializers.SerializerMethodField()
     comparison_data = serializers.SerializerMethodField()
     
     class Meta:
         model = Comparison
         fields = [
-            'id', 'devices', 'devices_count', 'max_items',
+            'id', 'products', 'products_count', 'max_items',
             'comparison_data', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['devices_count', 'comparison_data']
+        read_only_fields = ['products_count', 'comparison_data']
     
-    def get_devices_count(self, obj):
-        return obj.devices.count()
+    def get_products_count(self, obj):
+        return obj.products.count()
     
     def get_max_items(self, obj):
         return Comparison.MAX_ITEMS
@@ -46,11 +46,11 @@ class ComparisonSerializer(serializers.ModelSerializer):
         return obj.get_comparison_data()
 
 class AddToComparisonSerializer(serializers.Serializer):
-    device_id = serializers.IntegerField(required=True)
+    product_id = serializers.IntegerField(required=True)
     
-    def validate_device_id(self, value):
+    def validate_product_id(self, value):
         try:
-            Device.objects.get(id=value)
-        except Device.DoesNotExist:
+            Product.objects.get(id=value)
+        except Product.DoesNotExist:
             raise serializers.ValidationError("Товар не найден")
         return value

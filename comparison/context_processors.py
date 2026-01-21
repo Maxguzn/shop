@@ -7,7 +7,7 @@ def comparison_context(request):
     if request.user.is_authenticated:
         try:
             comparison = Comparison.objects.get(user=request.user)
-            count = comparison.devices.count()
+            count = comparison.products.count()
         except Comparison.DoesNotExist:
             count = 0
     else:
@@ -15,7 +15,7 @@ def comparison_context(request):
         if session_key:
             try:
                 comparison = Comparison.objects.get(session_key=session_key, user__isnull=True)
-                count = comparison.devices.count()
+                count = comparison.products.count()
             except Comparison.DoesNotExist:
                 count = 0
     

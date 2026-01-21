@@ -1,17 +1,17 @@
 from django import forms
-from ..main.models import Device, Comparison
+from ..main.models import Product, Comparison
 
 class ComparisonForm(forms.Form):
-    device_id = forms.IntegerField(widget=forms.HiddenInput())
+    product_id = forms.IntegerField(widget=forms.HiddenInput())
     action = forms.CharField(widget=forms.HiddenInput())  # 'add' или 'remove'
     
-    def clean_device_id(self):
-        device_id = self.cleaned_data['device_id']
+    def clean_product_id(self):
+        product_id = self.cleaned_data['product_id']
         try:
-            Device.objects.get(id=device_id)
-        except Device.DoesNotExist:
+            Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
             raise forms.ValidationError("Товар не найден")
-        return device_id
+        return product_id
 
 class AddSpecificationForm(forms.Form):
     key = forms.CharField(
